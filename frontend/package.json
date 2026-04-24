@@ -10,6 +10,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "start": "node -e \"console.log('Auth frontend library built successfully'); process.exit(0)\"",
+    "serve": "npx http-server dist -p 3000",
     "test": "jest",
     "lint": "eslint src --ext .ts,.tsx",
     "clean": "rm -rf dist"

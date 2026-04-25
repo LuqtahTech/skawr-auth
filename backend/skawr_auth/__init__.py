@@ -22,7 +22,6 @@ from .endpoints.auth import create_auth_router
 from .endpoints.projects import create_projects_router
 from .middleware.api_key_auth import create_api_key_dependencies
 from .utils.auth import get_password_hash, verify_password, create_access_token, get_current_user
-from .utils.database import create_auth_tables
 
 __all__ = [
     # Models
@@ -37,6 +36,5 @@ __all__ = [
     # Middleware
     "create_api_key_dependencies",
     # Utils
-    "get_password_hash", "verify_password", "create_access_token", "get_current_user",
-    "create_auth_tables"
+    "get_password_hash", "verify_password", "create_access_token", "get_current_user"
 ]

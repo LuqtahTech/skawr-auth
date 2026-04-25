@@ -32,17 +32,9 @@ jobs:
             -t ${{ env.BACKEND_IMAGE_NAME }} \
             ./backend
 
-      - name: Build Frontend Docker image (library build)
-        run: |
-          docker build \
-            -f frontend/Dockerfile \
-            -t ${{ env.FRONTEND_IMAGE_NAME }} \
-            ./frontend
-
       - name: Save Docker images
         run: |
           docker save ${{ env.BACKEND_IMAGE_NAME }} | gzip > skawr-auth-backend.tar.gz
-          docker save ${{ env.FRONTEND_IMAGE_NAME }} | gzip > skawr-auth-frontend.tar.gz
           ls -lh skawr-auth-*.tar.gz
 
       - name: Transfer images to VPS

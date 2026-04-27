@@ -1,3 +1,5 @@
+'use client'
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { AuthClient } from '../utils/auth-client'
 import { User, AuthContextType, AuthConfig } from '../types/auth'

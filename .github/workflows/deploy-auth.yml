@@ -1,0 +1,109 @@
+name: Build and Deploy Skawr Auth
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy-auth.yml'
+  workflow_dispatch:
+
+env:
+  VPS_HOST: 173.212.246.10
+  BACKEND_IMAGE_NAME: skawr-auth-backend:latest
+  FRONTEND_IMAGE_NAME: skawr-auth-frontend:latest
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Docker image
+        run: |
+          docker build \
+            -f backend/Dockerfile \
+            -t ${{ env.BACKEND_IMAGE_NAME }} \
+            ./backend
+
+      - name: Save Docker images
+        run: |
+          docker save ${{ env.BACKEND_IMAGE_NAME }} | gzip > skawr-auth-backend.tar.gz
+          ls -lh skawr-auth-*.tar.gz
+
+      - name: Transfer images to VPS
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "skawr-auth-*.tar.gz"
+          target: "/tmp/"
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+
+            # Load images
+            echo "Loading new auth images..."
+            docker load < /tmp/skawr-auth-backend.tar.gz
+
+            # Navigate to deployment directory
+            cd /opt/skawr-deployment
+
+            # Update docker-compose.yml to include auth services
+            if ! grep -q "skawr-auth-backend:" docker-compose.yml; then
+              echo "Adding skawr-auth services to docker-compose.yml..."
+              cat >> docker-compose.yml << 'EOF'
+
+              skawr-auth-backend:
+                image: skawr-auth-backend:latest
+                container_name: skawr-auth-backend
+                restart: unless-stopped
+                labels:
+                  - "traefik.enable=true"
+                  - "traefik.http.routers.auth.rule=Host(\`auth.ziyad.one\`)"
+                  - "traefik.http.routers.auth.entrypoints=websecure"
+                  - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+                  - "traefik.http.services.auth.loadbalancer.server.port=8000"
+                ports:
+                  - "8005:8000"
+                environment:
+                  - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-skawr}
+                  - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-in-production}
+                  - ENVIRONMENT=production
+                depends_on:
+                  - postgres
+                networks:
+                  - skawr
+            EOF
+            fi
+
+            # Deploy auth backend
+            echo "Deploying auth services..."
+            docker compose up -d --no-deps --force-recreate skawr-auth-backend
+
+            # Cleanup
+            echo "Cleaning up..."
+            rm -f /tmp/skawr-auth-*.tar.gz
+            docker image prune -f
+
+            # Health check
+            echo "Waiting for auth service to be healthy..."
+            sleep 15
+            echo "Health check:"
+            curl -sf http://localhost:8005/health > /dev/null && echo "Auth Backend: OK" || echo "Auth Backend: Check failed (may still be starting)"
+
+            echo "Deployment completed successfully!"

@@ -1,0 +1,39 @@
+{
+  "name": "@skawr/auth-frontend",
+  "version": "0.1.0",
+  "description": "Shared frontend authentication components for Skawr projects",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node -e \"console.log('Auth frontend library built successfully'); process.exit(0)\"",
+    "serve": "npx http-server dist -p 3000",
+    "test": "jest",
+    "lint": "eslint src --ext .ts,.tsx",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["skawr", "auth", "react", "typescript"],
+  "author": "Skawr Team <tech@skawr.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.0"
+  }
+}

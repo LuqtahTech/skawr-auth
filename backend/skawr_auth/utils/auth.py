@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timedelta
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,7 +15,16 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT settings - can be overridden
 DEFAULT_SECRET_KEY = "your-secret-key-here-change-in-production"
 DEFAULT_ALGORITHM = "HS256"
-DEFAULT_ACCESS_TOKEN_EXPIRE_HOURS = 24
+DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
+DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 30
+
+# Token types embedded in JWTs to prevent confusion
+TOKEN_TYPE_ACCESS = "access"
+TOKEN_TYPE_REFRESH = "refresh"
+
+# Password policy
+MIN_PASSWORD_LENGTH = 8
+MAX_PASSWORD_LENGTH = 72  # bcrypt hard limit
 
 # Security scheme
 security = HTTPBearer()
@@ -30,39 +40,74 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def validate_password_strength(password: str) -> Optional[str]:
+    """Return an error message if password is too weak, otherwise None."""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+    if len(password.encode("utf-8")) > MAX_PASSWORD_LENGTH:
+        return f"Password must be at most {MAX_PASSWORD_LENGTH} bytes"
+    if not re.search(r"[A-Za-z]", password):
+        return "Password must contain at least one letter"
+    if not re.search(r"\d", password):
+        return "Password must contain at least one number"
+    return None
+
+
+def _get_key_alg(secret_key: Optional[str], algorithm: Optional[str]):
+    return (
+        secret_key or os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY),
+        algorithm or os.getenv("ALGORITHM", DEFAULT_ALGORITHM),
+    )
+
+
+def _access_minutes() -> int:
+    return int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES))
+
+
+def _refresh_days() -> int:
+    return int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS))
+
+
 def create_access_token(
     data: dict,
     expires_delta: Optional[timedelta] = None,
     secret_key: Optional[str] = None,
-    algorithm: Optional[str] = None
+    algorithm: Optional[str] = None,
 ) -> str:
-    """Create a JWT access token."""
+    """Create a short-lived JWT access token."""
     to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=_access_minutes()))
+    to_encode.update({"exp": expire, "type": TOKEN_TYPE_ACCESS})
+    key, alg = _get_key_alg(secret_key, algorithm)
+    return jwt.encode(to_encode, key, algorithm=alg)
 
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(hours=DEFAULT_ACCESS_TOKEN_EXPIRE_HOURS)
 
-    to_encode.update({"exp": expire})
-
-    key = secret_key or os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
-    alg = algorithm or os.getenv("ALGORITHM", DEFAULT_ALGORITHM)
-
+def create_refresh_token(
+    data: dict,
+    expires_delta: Optional[timedelta] = None,
+    secret_key: Optional[str] = None,
+    algorithm: Optional[str] = None,
+) -> str:
+    """Create a long-lived JWT refresh token."""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=_refresh_days()))
+    to_encode.update({"exp": expire, "type": TOKEN_TYPE_REFRESH})
+    key, alg = _get_key_alg(secret_key, algorithm)
     return jwt.encode(to_encode, key, algorithm=alg)
 
 
 def verify_token(
     token: str,
     secret_key: Optional[str] = None,
-    algorithm: Optional[str] = None
+    algorithm: Optional[str] = None,
+    expected_type: Optional[str] = None,
 ) -> Optional[dict]:
-    """Verify and decode a JWT token."""
+    """Verify and decode a JWT token. Returns payload or None on failure."""
     try:
-        key = secret_key or os.getenv("SECRET_KEY", DEFAULT_SECRET_KEY)
-        alg = algorithm or os.getenv("ALGORITHM", DEFAULT_ALGORITHM)
-
+        key, alg = _get_key_alg(secret_key, algorithm)
         payload = jwt.decode(token, key, algorithms=[alg])
+        if expected_type and payload.get("type") != expected_type:
+            return None
         return payload
     except JWTError:
         return None
@@ -71,40 +116,27 @@ def verify_token(
 def create_get_current_user_dependency(user_model: Any, db_dependency: Any):
     """
     Factory function to create a get_current_user dependency.
-    This allows the auth library to work with different database setups.
-
-    Args:
-        user_model: The User model class from the consuming application
-        db_dependency: The database dependency function (e.g., get_db)
-
-    Returns:
-        A dependency function that can be used with FastAPI
+    Validates that the bearer token is an access token (not refresh).
     """
 
     async def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(security),
-        db: AsyncSession = Depends(db_dependency)
+        db: AsyncSession = Depends(db_dependency),
     ) -> Any:
-        """Get the current authenticated user from JWT token."""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-        try:
-            payload = verify_token(credentials.credentials)
-            if payload is None:
-                raise credentials_exception
-
-            user_id: str = payload.get("sub")
-            if user_id is None:
-                raise credentials_exception
-
-        except JWTError:
+        payload = verify_token(credentials.credentials, expected_type=TOKEN_TYPE_ACCESS)
+        if payload is None:
             raise credentials_exception
 
-        # Query user from database
+        user_id: Optional[str] = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+
         result = await db.execute(select(user_model).where(user_model.id == user_id))
         user = result.scalar_one_or_none()
 
@@ -114,7 +146,7 @@ def create_get_current_user_dependency(user_model: Any, db_dependency: Any):
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
+                detail="Inactive user",
             )
 
         return user

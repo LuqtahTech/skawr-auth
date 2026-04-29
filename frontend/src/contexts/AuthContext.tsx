@@ -1,59 +1,78 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { AuthClient } from '../utils/auth-client'
 import { User, AuthContextType, AuthConfig } from '../types/auth'
 
 interface AuthProviderProps {
   children: ReactNode
   config: AuthConfig
+  /** Called when the session ends because of a hard auth failure (e.g. refresh failed). */
+  onSessionExpired?: () => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-export function AuthProvider({ children, config }: AuthProviderProps) {
+export function AuthProvider({ children, config, onSessionExpired }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [authClient] = useState(() => new AuthClient(config))
 
   useEffect(() => {
-    // Check if user is already authenticated
+    let cancelled = false
     if (authClient.isAuthenticated()) {
       authClient
         .getCurrentUser()
-        .then(setUser)
-        .catch(() => {
-          // Token is invalid, logout
-          authClient.logout()
+        .then((u) => {
+          if (!cancelled) setUser(u)
         })
-        .finally(() => setLoading(false))
+        .catch(() => {
+          authClient.logout()
+          if (!cancelled) {
+            setUser(null)
+            onSessionExpired?.()
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
     } else {
       setLoading(false)
     }
-  }, [authClient])
+    return () => {
+      cancelled = true
+    }
+  }, [authClient, onSessionExpired])
 
   const login = async (email: string, password: string) => {
-    try {
-      const response = await authClient.login({ email, password })
-      setUser(response.user)
-    } catch (error) {
-      throw error
-    }
+    const response = await authClient.login({ email, password })
+    setUser(response.user)
   }
 
   const signup = async (email: string, password: string, name?: string) => {
-    try {
-      const response = await authClient.signup({ email, password, name })
-      setUser(response.user)
-    } catch (error) {
-      throw error
-    }
+    const response = await authClient.signup({ email, password, name })
+    setUser(response.user)
   }
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authClient.logout()
     setUser(null)
-  }
+  }, [authClient])
+
+  const apiFetch = useCallback(
+    async (input: string, init?: RequestInit) => {
+      const res = await authClient.fetch(input, init)
+      // After fetch, if the client was logged out (refresh failed), reflect it in state.
+      if (!authClient.isAuthenticated() && user !== null) {
+        setUser(null)
+        onSessionExpired?.()
+      }
+      return res
+    },
+    [authClient, user, onSessionExpired]
+  )
+
+  const getAccessToken = useCallback(() => authClient.getAccessToken(), [authClient])
 
   const value: AuthContextType = {
     user,
@@ -62,6 +81,8 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     signup,
     logout,
     isAuthenticated: authClient.isAuthenticated() && user !== null,
+    apiFetch,
+    getAccessToken,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

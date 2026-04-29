@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+dist/
+*/dist/
+build/
+*/build/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# macOS Finder duplicate-file artefacts (e.g. "Dockerfile 2", "README 2.md")
+* [0-9].md
+* [0-9].json
+* [0-9].ts
+* [0-9].tsx
+* [0-9].js
+* [0-9].toml
+* [0-9].yml
+* [0-9].yaml
+*/[Dd]ockerfile [0-9]
+[Dd]ockerfile [0-9]
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/

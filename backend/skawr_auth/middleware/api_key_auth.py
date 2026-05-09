@@ -71,17 +71,6 @@ def create_api_key_dependencies(
             if api_key_obj.expires_at and api_key_obj.expires_at < datetime.utcnow():
                 raise HTTPException(status_code=401, detail="Expired API Key")
 
-            # Snapshot the attributes the caller will read AFTER we commit.
-            # SQLAlchemy 2.x async sessions expire every tracked attribute on
-            # commit; the next read would trigger a lazy refresh that wants
-            # to run `await` from a sync getter — no greenlet context — and
-            # the request 500s with `MissingGreenlet`. Reading these now
-            # binds them to plain Python values that survive the expiry.
-            _ = api_key_obj.permissions
-            _ = api_key_obj.id
-            _ = project.id
-            _ = project.name
-
             # Update last_used_at timestamp
             api_key_obj.last_used_at = datetime.utcnow()
             await db.commit()

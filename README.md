@@ -36,6 +36,10 @@ skawr-auth/
 ### 1. Install Dependencies
 
 ```bash
+py -m pip install --upgrade pip
+```
+
+```bash
 pip install -e /path/to/skawr-auth/backend
 ```
 

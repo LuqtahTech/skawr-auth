@@ -63,32 +63,16 @@ jobs:
             # Navigate to deployment directory
             cd /opt/skawr-deployment
 
-            # Update docker-compose.yml to include auth services
+            # The skawr-auth-backend service definition lives in the
+            # skawr-deployment repo (docker-compose.yml). If it's missing
+            # here, the previous heredoc that appended it had bad escapes
+            # and would silently put the wrong env var name (JWT_SECRET_KEY
+            # — the code reads SECRET_KEY). Fail loudly instead.
             if ! grep -q "skawr-auth-backend:" docker-compose.yml; then
-              echo "Adding skawr-auth services to docker-compose.yml..."
-              cat >> docker-compose.yml << 'EOF'
-
-              skawr-auth-backend:
-                image: skawr-auth-backend:latest
-                container_name: skawr-auth-backend
-                restart: unless-stopped
-                labels:
-                  - "traefik.enable=true"
-                  - "traefik.http.routers.auth.rule=Host(\`auth.ziyad.one\`)"
-                  - "traefik.http.routers.auth.entrypoints=websecure"
-                  - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
-                  - "traefik.http.services.auth.loadbalancer.server.port=8000"
-                ports:
-                  - "8005:8000"
-                environment:
-                  - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-skawr}
-                  - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-key-change-in-production}
-                  - ENVIRONMENT=production
-                depends_on:
-                  - postgres
-                networks:
-                  - skawr
-            EOF
+              echo "ERROR: skawr-auth-backend service not found in /opt/skawr-deployment/docker-compose.yml"
+              echo "Run a deploy on LuqtahTech/skawr-deployment first; its compose"
+              echo "owns this service definition (with the correct SECRET_KEY env)."
+              exit 1
             fi
 
             # Deploy auth backend

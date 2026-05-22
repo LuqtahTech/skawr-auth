@@ -43,6 +43,18 @@ py -m pip install --upgrade pip
 pip install -e /path/to/skawr-auth/backend
 ```
 
+### Required Environment Variables
+
+The library reads these at runtime via `os.getenv`. Consumers (or the standalone service, if you deploy `backend/skawr_auth/main.py`) are responsible for setting them.
+
+| Variable | Required? | Default | Purpose |
+|---|---|---|---|
+| `SECRET_KEY` | **Yes** | `"your-secret-key-here-change-in-production"` (unsafe) | HMAC signing key for JWT access + refresh tokens. **The default is a public string — production deployments MUST override it.** |
+| `ALGORITHM` | No | `HS256` | JWT signing algorithm. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | Access-token lifetime in minutes. |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | No | `30` | Refresh-token lifetime in days. |
+| `ENVIRONMENT` | Only for standalone service | `None` | When `"development"`, CORS allows all origins; otherwise allows a hardcoded production hosts list. Library-only consumers can ignore this. |
+
 ### 2. Setup Models
 
 ```python

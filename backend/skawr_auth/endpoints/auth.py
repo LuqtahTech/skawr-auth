@@ -24,6 +24,7 @@ from ..utils.auth import (
     verify_token,
     TOKEN_TYPE_REFRESH,
 )
+from ..models.enrollment import ProductEnrollment
 
 
 # Module-level limiter so consumers can register the exception handler.
@@ -41,8 +42,17 @@ def _user_response(user: Any) -> UserResponse:
     )
 
 
-def _issue_tokens(user_id: str) -> tuple[str, str]:
-    return create_access_token({"sub": user_id}), create_refresh_token({"sub": user_id})
+def _issue_tokens(
+    user_id: str,
+    email: Optional[str] = None,
+    product_enrollments: Optional[list] = None,
+) -> tuple[str, str]:
+    data: dict[str, Any] = {"sub": user_id}
+    if email:
+        data["email"] = email
+    if product_enrollments is not None:
+        data["product_enrollments"] = product_enrollments
+    return create_access_token(data), create_refresh_token(data)
 
 
 def create_auth_router(
@@ -55,6 +65,20 @@ def create_auth_router(
     """Factory creating the authentication router with rate-limited endpoints."""
 
     router = APIRouter(prefix=prefix, tags=tags or ["authentication"])
+
+    async def _get_enrollments_for_user(db: AsyncSession, user_id) -> list[dict]:
+        """Query product enrollments for a user and return as list of dicts for JWT claims."""
+        result = await db.execute(
+            select(ProductEnrollment).where(
+                ProductEnrollment.user_id == user_id,
+                ProductEnrollment.is_active == True,
+            )
+        )
+        enrollments = result.scalars().all()
+        return [
+            {"product": e.product, "role": e.role}
+            for e in enrollments
+        ]
 
     @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
     @limiter.limit("5/minute")
@@ -79,7 +103,13 @@ def create_auth_router(
         await db.commit()
         await db.refresh(new_user)
 
-        access, refresh = _issue_tokens(str(new_user.id))
+        enrollments = await _get_enrollments_for_user(db, new_user.id)
+
+        access, refresh = _issue_tokens(
+            user_id=str(new_user.id),
+            email=new_user.email,
+            product_enrollments=enrollments,
+        )
         return AuthResponse(
             access_token=access,
             refresh_token=refresh,
@@ -103,7 +133,13 @@ def create_auth_router(
         if not user.is_active:
             raise HTTPException(status_code=400, detail="Inactive user")
 
-        access, refresh = _issue_tokens(str(user.id))
+        enrollments = await _get_enrollments_for_user(db, user.id)
+
+        access, refresh = _issue_tokens(
+            user_id=str(user.id),
+            email=user.email,
+            product_enrollments=enrollments,
+        )
         return AuthResponse(
             access_token=access,
             refresh_token=refresh,
@@ -128,7 +164,13 @@ def create_auth_router(
         if user is None or not user.is_active:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-        access, new_refresh = _issue_tokens(str(user.id))
+        enrollments = await _get_enrollments_for_user(db, user.id)
+
+        access, new_refresh = _issue_tokens(
+            user_id=str(user.id),
+            email=user.email,
+            product_enrollments=enrollments,
+        )
         return TokenPair(access_token=access, refresh_token=new_refresh, token_type="bearer")
 
     @router.get("/me", response_model=UserResponse)

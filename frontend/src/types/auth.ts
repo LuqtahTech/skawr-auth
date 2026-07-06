@@ -1,3 +1,31 @@
+export type ProductId = 'analytics' | 'search_saas' | 'client_dashboard' | 'admin_dashboard' | 'marketplace'
+export type RoleId = 'admin' | 'member' | 'viewer'
+
+export interface ProductEnrollment {
+  product: ProductId
+  role: RoleId
+}
+
+export interface ConnectedStore {
+  id: string
+  platform: 'salla' | 'shopify'
+  platform_store_id: string
+  platform_store_url?: string
+  platform_email?: string
+  subscription_status?: string
+  subscription_tier?: string
+  created_at: string
+}
+
+export interface UserSession {
+  id: string
+  device?: string
+  ip_address?: string
+  product?: string
+  created_at: string
+  expires_at: string
+}
+
 export interface User {
   id: string
   email: string
@@ -42,10 +70,16 @@ export interface AuthContextType {
   apiFetch: (input: string, init?: RequestInit) => Promise<Response>
   /** Returns the current access token (or null). Mostly for debugging. */
   getAccessToken: () => string | null
+  /** Returns the list of products the current user is enrolled in with their roles. */
+  getEnrolledProducts: () => ProductEnrollment[]
+  /** Checks if the current user has access to the specified product. */
+  hasProductAccess: (product: ProductId) => boolean
 }
 
 export interface AuthConfig {
   apiBaseUrl: string
   tokenStorageKey?: string
   refreshTokenStorageKey?: string
+  /** Which product this app is (for context on login). */
+  product?: ProductId
 }

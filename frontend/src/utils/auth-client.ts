@@ -6,6 +6,7 @@ import {
   LoginRequest,
   AuthConfig,
   TokenPair,
+  ProductEnrollment,
 } from '../types/auth'
 
 const DEFAULT_TOKEN_KEY = 'auth_token'
@@ -39,13 +40,58 @@ export class AuthClient {
     return response.data
   }
 
-  async login(data: LoginRequest): Promise<AuthResponse> {
-    const response: AxiosResponse<AuthResponse> = await axios.post(
-      `${this.apiBaseUrl}/auth/login`,
-      data
-    )
+  async login(data: LoginRequest & { product?: string }): Promise<AuthResponse> {
+    const { product, ...loginData } = data
+    let url = `${this.apiBaseUrl}/auth/login`
+    if (product) {
+      url += `?product=${encodeURIComponent(product)}`
+    }
+    const response: AxiosResponse<AuthResponse> = await axios.post(url, loginData)
     this.persistTokens(response.data.access_token, response.data.refresh_token)
     return response.data
+  }
+
+  getEnrolledProducts(): ProductEnrollment[] {
+    const payload = this._decodeTokenPayload()
+    if (!payload || !payload.product_enrollments) {
+      return []
+    }
+    return payload.product_enrollments as ProductEnrollment[]
+  }
+
+  hasProductAccess(product: string): boolean {
+    const payload = this._decodeTokenPayload()
+    if (!payload) {
+      return false
+    }
+    // Backward compat: if token has no product_enrollments claim, return true (legacy token = access everywhere)
+    if (!payload.product_enrollments) {
+      return true
+    }
+    const enrollments = payload.product_enrollments as ProductEnrollment[]
+    return enrollments.some((e) => e.product === product)
+  }
+
+  private _decodeTokenPayload(): Record<string, any> | null {
+    if (!this.accessToken) {
+      return null
+    }
+    try {
+      const parts = this.accessToken.split('.')
+      if (parts.length !== 3) {
+        return null
+      }
+      // Base64url decode the payload (middle part)
+      let base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+      // Pad with '=' to make it a valid base64 string
+      while (base64.length % 4 !== 0) {
+        base64 += '='
+      }
+      const jsonStr = atob(base64)
+      return JSON.parse(jsonStr)
+    } catch {
+      return null
+    }
   }
 
   async getCurrentUser(): Promise<User> {

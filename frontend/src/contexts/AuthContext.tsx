@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
 import { AuthClient } from '../utils/auth-client'
-import { User, AuthContextType, AuthConfig } from '../types/auth'
+import { User, AuthContextType, AuthConfig, ProductId } from '../types/auth'
 
 interface AuthProviderProps {
   children: ReactNode
@@ -74,6 +74,13 @@ export function AuthProvider({ children, config, onSessionExpired }: AuthProvide
 
   const getAccessToken = useCallback(() => authClient.getAccessToken(), [authClient])
 
+  const getEnrolledProducts = useCallback(() => authClient.getEnrolledProducts(), [authClient])
+
+  const hasProductAccess = useCallback(
+    (product: ProductId) => authClient.hasProductAccess(product),
+    [authClient]
+  )
+
   const value: AuthContextType = {
     user,
     loading,
@@ -83,6 +90,8 @@ export function AuthProvider({ children, config, onSessionExpired }: AuthProvide
     isAuthenticated: authClient.isAuthenticated() && user !== null,
     apiFetch,
     getAccessToken,
+    getEnrolledProducts,
+    hasProductAccess,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

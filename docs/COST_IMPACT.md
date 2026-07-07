@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-**Estimated added monthly cost: ~$0 incremental** on the current Contabo VPS baseline (~$25–30/mo). Unified auth adds *identity* rows (users, enrollments, sessions, stores), not *product* rows — and per steering rule #1, **product count is the cost driver, not auth or search volume**. No OpenSearch threshold moves, no new metered third-party costs, no new services.
+**Estimated added monthly cost: ~$0 incremental on the current Contabo VPS** (~$25–30/mo baseline), and **~$1/mo on the future AWS baseline** (Secrets Manager for the two signing keys — see §7). Unified auth adds *identity* rows (users, enrollments, sessions, stores), not *product* rows — and per steering rule #1, **product count is the cost driver, not auth or search volume**. No OpenSearch threshold moves, no new metered third-party costs, no new services.
 
 The first threshold that unified-auth storage could theoretically approach is ~10M+ users (tens of GB), which is far beyond any near-term scale and would still be dwarfed by the analytics `events` table that independently drives the ClickHouse migration decision.
 
@@ -100,9 +100,34 @@ Per steering rule #1, tier upgrades and infra scaling gate on **indexed product 
 
 When the AWS migration happens (~$180–200/mo baseline per steering):
 
-- **RDS storage:** unified auth adds ~MBs–hundreds of MBs — negligible against the RDS instance already sized for events.
-- **No new services:** no queue, no warehouse, no additional Fargate tasks, no OpenSearch nodes attributable to auth.
-- **Incremental AWS cost of unified auth: ~$0.**
+- **RDS storage:** unified auth adds ~MBs–hundreds of MBs — negligible against the RDS instance already sized for events. At gp3 (~$0.115/GB-mo), even 100K users (~300 MB) ≈ **~$0.03/mo**.
+- **RDS IOPS/compute:** extra auth queries are small indexed lookups on low-frequency events (login/refresh); `verify_token_for_product` is DB-free on the hot path. Does not move the instance class.
+- **Fargate:** negligible CPU; won't bump task size unless already at the edge.
+- **ElastiCache / OpenSearch:** unchanged, $0.
+- **No new services:** no queue, no warehouse, no additional Fargate tasks, no OpenSearch nodes attributable to auth. (The design keeps skawr-auth a *library*, not a standalone service — if that ever changes, a dedicated Fargate task would add ~$15–30/mo, but that is out of scope.)
+
+### The one genuinely new AWS line item
+
+Unlike the VPS (where secrets live in `.env` files for free), AWS best practice stores signing keys in **Secrets Manager**:
+
+| Item | Cost |
+|------|------|
+| `SKAWR_AUTH_SECRET_KEY` + `SKAWR_AUTH_STORE_ENCRYPTION_KEY` | 2 × ~$0.40/secret/mo + API-call charges ≈ **~$0.80–1/mo** |
+
+This can be avoided by using **SSM Parameter Store (standard tier, free)** or plain env vars in the task definition, but Secrets Manager is the idiomatic choice for JWT/encryption keys.
+
+### VPS vs AWS
+
+| | VPS (now) | AWS (future) |
+|---|-----------|--------------|
+| Incremental auth cost | **$0** (fixed hardware, headroom) | **~$1/mo** (Secrets Manager for 2 keys) + storage rounding error |
+| Cost driver moved? | No | No |
+
+**Key distinction:** on the VPS this is *genuinely* $0 (you provision nothing new). On AWS it becomes **"rounding error" — cents to low single digits/month** — because AWS is metered. The only honest non-zero item is ~$1/mo for storing the two keys in Secrets Manager.
+
+**Region note:** deploying to `me-south-1` (Bahrain) for MENA data residency carries a ~10–30% premium over `us-east-1` on several services — but that is a region decision, not a cost introduced by unified auth.
+
+- **Incremental AWS cost of unified auth: ~$1/mo** (Secrets Manager) — effectively negligible.
 
 ---
 
@@ -110,11 +135,11 @@ When the AWS migration happens (~$180–200/mo baseline per steering):
 
 | Dimension | Incremental cost |
 |-----------|------------------|
-| VPS (current) | **~$0/mo** |
+| VPS (current) | **~$0/mo** (fixed hardware, headroom) |
 | Postgres storage | ~3 MB / 1,000 users (negligible) |
 | Compute / latency | Minimal (hot path is DB-free) |
 | One-time migration | No new infra; minutes of runtime |
 | OpenSearch / embeddings | $0 |
-| AWS (future) | ~$0 incremental |
+| AWS (future) | **~$1/mo** (Secrets Manager for 2 keys) + storage rounding error |
 
 **Threshold crossing:** No unified-auth-driven threshold is crossed within any realistic near-term user count. Auth storage would only become a first-order concern at ~10M+ users, at which point the events table (not auth) already dictates the platform's scaling strategy.

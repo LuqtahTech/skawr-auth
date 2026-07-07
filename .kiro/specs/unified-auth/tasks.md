@@ -409,7 +409,18 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Test unified tokens → still work correctly
     - _Requirements: 13.4_
 
-- [ ] 14. Final checkpoint - Ensure all tests pass
+- [ ] 14. Estimate infrastructure cost impact of unified auth
+  - Produce a written cost estimate (in the repo, e.g. `docs/COST_IMPACT.md`) covering the added infrastructure footprint of this feature across all implemented and pending tasks. Use `Skawr/.kiro/steering/skawr-pricing-steering.md` as the guiding/steering doc.
+  - **PostgreSQL storage growth**: estimate added rows/bytes for the new tables (`product_enrollments`, `connected_stores`, `subscription_tier_audit`, extended `user_sessions`, `api_keys` columns, dormant `organizations`/`organization_members`/`user_identity_providers`). Postgres remains the single data store per steering — quantify growth per 1K users and confirm it stays negligible vs event-table volume.
+  - **Compute / latency**: estimate extra per-request DB work (enrollment lookup on token issuance, `verify_token_for_product` is DB-free, resource resolver queries for indexer, session cleanup on refresh). Note that JWT `product_enrollments` claim avoids a per-request enrollment query for most reads.
+  - **Encryption overhead**: note the Fernet encrypt/decrypt cost for `connected_stores` OAuth tokens (negligible, in-process).
+  - **One-time migration cost**: estimate runtime + DB load of the three migration scripts against production data volumes; confirm they run within the VPS's headroom and require no extra infra.
+  - **Threshold checks**: confirm this feature does NOT move any OpenSearch scaling threshold (it adds no products/indices) and does NOT change the ~$25–30/mo VPS baseline. Product count is the cost driver per steering rule #1 — unified auth adds identity rows, not product rows, so cost impact should be near-zero.
+  - **Third-party**: confirm no new metered third-party costs (no Fireworks embeddings, no email volume beyond existing). Flag the upcoming Polar.sh fees as out-of-scope (tracked in saas-payment-integration).
+  - Output a summary line: estimated added monthly cost (expected: ~$0 incremental on current VPS) and the user-count at which any threshold would be crossed.
+  - _Steering: Skawr/.kiro/steering/skawr-pricing-steering.md_
+
+- [ ] 15. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
@@ -454,7 +465,8 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     { "id": 21, "tasks": ["12.4"] },
     { "id": 22, "tasks": ["13.1", "13.2", "13.3"] },
     { "id": 23, "tasks": ["13.4"] },
-    { "id": 24, "tasks": ["13.5"] }
+    { "id": 24, "tasks": ["13.5"] },
+    { "id": 25, "tasks": ["14"] }
   ]
 }
 ```

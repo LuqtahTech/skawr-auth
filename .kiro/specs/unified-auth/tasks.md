@@ -409,7 +409,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Test unified tokens → still work correctly
     - _Requirements: 13.4_
 
-- [ ] 14. Estimate infrastructure cost impact of unified auth
+- [x] 14. Estimate infrastructure cost impact of unified auth
   - Produce a written cost estimate (in the repo, e.g. `docs/COST_IMPACT.md`) covering the added infrastructure footprint of this feature across all implemented and pending tasks. Use `Skawr/.kiro/steering/skawr-pricing-steering.md` as the guiding/steering doc.
   - **PostgreSQL storage growth**: estimate added rows/bytes for the new tables (`product_enrollments`, `connected_stores`, `subscription_tier_audit`, extended `user_sessions`, `api_keys` columns, dormant `organizations`/`organization_members`/`user_identity_providers`). Postgres remains the single data store per steering — quantify growth per 1K users and confirm it stays negligible vs event-table volume.
   - **Compute / latency**: estimate extra per-request DB work (enrollment lookup on token issuance, `verify_token_for_product` is DB-free, resource resolver queries for indexer, session cleanup on refresh). Note that JWT `product_enrollments` claim avoids a per-request enrollment query for most reads.

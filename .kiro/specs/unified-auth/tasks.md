@@ -271,7 +271,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Test backward compat: old tokens (without enrollments) still accepted
     - _Requirements: 13.1, 13.2, 4.1_
 
-- [ ] 8. PR 3: skawr-backend — Indexer Dual-Auth + Dashboard
+- [ ] 8. PR 3: skawr-search — Indexer Dual-Auth + Dashboard
   - [ ] 8.1 Add skawr-auth as dependency to indexer
     - Add skawr-auth to requirements.txt / pyproject.toml
     - Import models and utilities needed for dual-auth
@@ -360,7 +360,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
 - [ ] 11. Checkpoint - Ensure migration scripts are correct
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. PR 5: skwar-web-mvp — Unified Auth Frontend
+- [ ] 12. PR 5: skawr-web — Unified Auth Frontend
   - [ ] 12.1 Replace guest AuthProvider with @skawr/auth-frontend AuthProvider
     - Remove Supabase auth references
     - Configure AuthProvider with apiBaseUrl pointing to unified auth endpoints

@@ -271,35 +271,35 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Test backward compat: old tokens (without enrollments) still accepted
     - _Requirements: 13.1, 13.2, 4.1_
 
-- [ ] 8. PR 3: skawr-backend — Indexer Dual-Auth + Dashboard
-  - [ ] 8.1 Add skawr-auth as dependency to indexer
+- [x] 8. PR 3: skawr-backend — Indexer Dual-Auth + Dashboard
+  - [x] 8.1 Add skawr-auth as dependency to indexer
     - Add skawr-auth to requirements.txt / pyproject.toml
     - Import models and utilities needed for dual-auth
     - _Requirements: 13.2_
 
-  - [ ] 8.2 Implement dual-auth in get_current_client() using resource resolver
+  - [x] 8.2 Implement dual-auth in get_current_client() using resource resolver
     - Replace existing get_current_client with `get_current_user_or_legacy_client()`
     - Handle unified tokens (new) → resolve user directly
     - Handle legacy indexer tokens (old) → resolve via client_id → connected_store → user
     - Keep both paths working simultaneously
     - _Requirements: 13.3, 13.4_
 
-  - [ ] 8.3 Update token_service to issue unified tokens for NEW logins
+  - [x] 8.3 Update token_service to issue unified tokens for NEW logins
     - New login/signup flows issue tokens with product_enrollments claim
     - Ensure search_saas enrollment exists for user before token creation
     - _Requirements: 4.1, 2.2_
 
-  - [ ] 8.4 Keep legacy token acceptance for existing sessions
+  - [x] 8.4 Keep legacy token acceptance for existing sessions
     - Existing refresh tokens continue to work
     - Legacy tokens are accepted and resolved through dual-auth path
     - _Requirements: 13.3, 13.4_
 
-  - [ ] 8.5 Update dashboard-client auth context for unified token format
+  - [x] 8.5 Update dashboard-client auth context for unified token format
     - Parse product_enrollments from JWT in frontend auth context
     - Show user's role and enrolled products in dashboard UI
     - _Requirements: 6.2, 14.3_
 
-  - [ ] 8.6 Add SKAWR_AUTH_SECRET_KEY env var to docker-compose and config
+  - [x] 8.6 Add SKAWR_AUTH_SECRET_KEY env var to docker-compose and config
     - Add to docker-compose.yml, .env.example
     - Update config loading to use _get_secret_key() priority chain
     - _Requirements: 4.3_
@@ -311,18 +311,18 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Test: API key without resource_id → all user's resources accessible
     - _Requirements: 13.3, 13.4, 7.3_
 
-- [ ] 9. Checkpoint - Ensure consumer adoption PRs pass
+- [x] 9. Checkpoint - Ensure consumer adoption PRs pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. PR 4: Migration Scripts (skawr-auth repo)
-  - [ ] 10.1 Create common migration utilities module
+  - [x] 10.1 Create common migration utilities module
     - Idempotency helpers (UUID-based dedup check)
     - Conflict logging (email, source product, action taken)
     - Summary reporting (total processed, migrated, skipped, enrollments created)
     - DB connection management (source + target)
     - _Requirements: 10.4, 10.5, 10.7, 11.6_
 
-  - [ ] 10.2 Implement migrate_analytics_users.py
+  - [x] 10.2 Implement migrate_analytics_users.py
     - Copy users preserving all columns (id, email, password_hash, name, company, email_verified, is_active, created_at, updated_at)
     - Create ProductEnrollment (product=analytics, role=admin) for each
     - Re-associate projects and API keys
@@ -330,7 +330,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Output summary report
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
 
-  - [ ] 10.3 Implement migrate_saas_apiclients.py
+  - [x] 10.3 Implement migrate_saas_apiclients.py
     - Create unified user for each APIClient with non-null email
     - Create ProductEnrollment (product=search_saas, role=admin)
     - Create connected_store records (Salla/Shopify data migration)
@@ -340,7 +340,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Skip guest APIClients (null email), log skipped IDs
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-  - [ ] 10.4 Implement migrate_marketplace_supabase.py
+  - [x] 10.4 Implement migrate_marketplace_supabase.py
     - Export Supabase users → create unified user records
     - Handle OAuth-only users (no password_hash)
     - Create ProductEnrollment (product=marketplace, role=member)
@@ -357,7 +357,7 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     - Verify summary report output
     - **Validates: Requirements 10.1-10.7, 11.1-11.6, 12.1-12.4**
 
-- [ ] 11. Checkpoint - Ensure migration scripts are correct
+- [x] 11. Checkpoint - Ensure migration scripts are correct
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 12. PR 5: skwar-web-mvp — Unified Auth Frontend

@@ -423,6 +423,29 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
 - [ ] 15. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
+- [ ] 16. Follow-up: Add ProductSwitcher to each product frontend
+  - [ ] 16.1 Add ProductSwitcher to skawr-analytics dashboard sidebar
+    - Import `ProductSwitcher` from `@skawr/auth-frontend`
+    - Place in the left sidebar (below navigation, above settings)
+    - Map products to URLs: analytics → `/`, search_saas → `https://skawr.com/saas`, client_dashboard → `https://api.ziyad.one/dashboard`
+    - Use `getEnrolledProducts()` from useAuth hook to populate
+    - Only render if user has enrollments in 2+ products
+    - _Repo: skawr-analytics/frontend_
+
+  - [ ] 16.2 Add ProductSwitcher to skawr-dashboard-client header
+    - Import `ProductSwitcher` from `@skawr/auth-frontend` (or use the enrollment data already wired in task 8.5)
+    - Place in the top navbar (dropdown or sidebar)
+    - Map products to URLs: search_saas → `/`, analytics → `https://analytics.ziyad.one`, marketplace → `https://skawr.com`
+    - Use `enrolledProducts` from the auth context (already available after PR 3)
+    - Only render if user has enrollments in 2+ products
+    - _Repo: skawr-search/skawr-dashboard-client_
+
+  - [ ] 16.3 Add ProductSwitcher to skawr-dashboard-admin
+    - Import `ProductSwitcher` from `@skawr/auth-frontend`
+    - Place in the admin sidebar
+    - Admin users typically have access to all products — show all
+    - _Repo: skawr-search/skawr-dashboard-admin_
+
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
@@ -466,7 +489,8 @@ Each top-level task maps to a PR. Sub-tasks are independently reviewable, testab
     { "id": 22, "tasks": ["13.1", "13.2", "13.3"] },
     { "id": 23, "tasks": ["13.4"] },
     { "id": 24, "tasks": ["13.5"] },
-    { "id": 25, "tasks": ["14"] }
+    { "id": 25, "tasks": ["14"] },
+    { "id": 26, "tasks": ["16.1", "16.2", "16.3"] }
   ]
 }
 ```

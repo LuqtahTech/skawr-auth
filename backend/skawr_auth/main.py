@@ -15,9 +15,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"] if os.getenv("ENVIRONMENT") == "development" else [
-        "https://admin.ziyad.one",
-        "https://ziyad.one",
-        "https://auth-ui.ziyad.one",
+        "https://admin.skawr.com",
+        "https://dashboard.skawr.com",
+        "https://skawr.com",
+        "https://login.skawr.com",
         "http://localhost:3000",
         "http://localhost:3001",
         "http://localhost:3002",

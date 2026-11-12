@@ -1,6 +1,17 @@
 # Skawr Auth - Shared Authentication Library
 
-Shared authentication and API key management system for all Skawr projects.
+Shared authentication and API key management library from before SKAWR moved
+to Zitadel.
+
+> **Legacy.** New services sign in through Zitadel (`id.skawr.com`) via
+> skawr-login, never through this library. As of 2026-11-12 the only consumer
+> is skawr-analytics: its backend Dockerfile clones this repo's `main` and
+> pip-installs `backend/`, and its frontend links `frontend/` as
+> `@skawr/auth-frontend` from a sibling clone. Neither package is published to
+> PyPI or npm (`pip index versions skawr-auth` and
+> `npm view @skawr/auth-frontend` both find nothing), so `PUBLISHING_GUIDE.md`
+> describes a release that has not happened. Because analytics builds from
+> `main`, a push here reaches the next analytics backend build.
 
 ## Features
 
@@ -49,7 +60,7 @@ The library reads these at runtime via `os.getenv`. Consumers (or the standalone
 
 | Variable | Required? | Default | Purpose |
 |---|---|---|---|
-| `SECRET_KEY` | **Yes** | `"your-secret-key-here-change-in-production"` (unsafe) | HMAC signing key for JWT access + refresh tokens. **The default is a public string — production deployments MUST override it.** |
+| `SECRET_KEY` | **Yes** | `"your-secret-key-here-change-in-production"` (unsafe) | HMAC signing key for JWT access + refresh tokens. **The default is a public string, so production deployments MUST override it.** |
 | `ALGORITHM` | No | `HS256` | JWT signing algorithm. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | Access-token lifetime in minutes. |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | No | `30` | Refresh-token lifetime in days. |

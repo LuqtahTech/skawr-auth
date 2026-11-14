@@ -1,3 +1,5 @@
+> **Archived 2026-11-14.** The code lives on in skawr-analytics (`backend/app/legacy_auth`, `frontend/app/lib/auth`) since skawr-analytics#280.
+
 # Skawr Auth - Shared Authentication Library
 
 Shared authentication and API key management library from before SKAWR moved
